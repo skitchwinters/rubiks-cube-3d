@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>3D Rubik's Cube Simulator</title>
+  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body data-theme="classic">
+  <div id="canvas-container"></div>
+  
+  <div class="ui-layer">
+    <div class="top-bar">
+      <div class="panel">
+        <h1>Cube3D</h1>
+        <p class="instructions">Left-click/touch & drag a sticker to rotate.<br>Right-click/two-finger to orbit camera.</p>
+      </div>
+      <div class="top-actions">
+        <button id="btn-scramble" class="action-btn btn-scramble" title="Scramble Cube">Scramble</button>
+        <button id="btn-reset" class="action-btn btn-reset" title="Reset Cube to Solved State">Reset</button>
+        <button id="btn-open-drawer" class="action-btn btn-facelets" title="Open Facelets Menu">🏷️ Facelets</button>
+        <div class="settings-wrapper">
+          <button id="btn-settings" class="action-btn btn-settings" title="Settings">⚙️</button>
+          <div id="settings-menu" class="panel settings-menu">
+            <div class="settings-header">
+              <span class="settings-title">⚙️ Settings</span>
+              <button id="btn-close-settings" class="drawer-close-btn" title="Close Settings">&times;</button>
+            </div>
+            <div class="setting-item">
+              <label for="theme-select">Theme:</label>
+              <select id="theme-select">
+                <option value="classic">Classic</option>
+                <option value="cyberpunk">Cyberpunk Neon</option>
+                <option value="glass">Frosted Glass</option>
+                <option value="carbon">Carbon Fiber</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="left-bar">
+      <div class="panel notation-panel">
+        <p style="text-align:center; margin:0 0 5px 0; font-size:12px; opacity:0.8;">Controls</p>
+        <div class="notation-grid">
+          <button data-move="U" title="Up (U)">U</button>
+          <button data-move="U'" title="Up Inverse (Shift+U)">U'</button>
+          <button data-move="D" title="Down (D)">D</button>
+          <button data-move="D'" title="Down Inverse (Shift+D)">D'</button>
+          <button data-move="F" title="Front (F)">F</button>
+          <button data-move="F'" title="Front Inverse (Shift+F)">F'</button>
+          <button data-move="B" title="Back (B)">B</button>
+          <button data-move="B'" title="Back Inverse (Shift+B)">B'</button>
+          <button data-move="R" title="Right (R)">R</button>
+          <button data-move="R'" title="Right Inverse (Shift+R)">R'</button>
+          <button data-move="L" title="Left (L)">L</button>
+          <button data-move="L'" title="Left Inverse (Shift+L)">L'</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="panel sequence-panel">
+        <div class="sequence-header">Sequence</div>
+        <div class="sequence-row">
+          <input type="text" id="sequence-input" placeholder="e.g. R U R' U' or RUR'U'" title="Enter move sequence">
+          <button id="btn-execute-sequence">Execute</button>
+        </div>
+        <div class="sequence-presets">
+          <button class="btn-preset-seq" data-seq="R U R' U'" title="Right Trigger / Sexy Move (R U R' U')">R U R' U'</button>
+          <button class="btn-preset-seq" data-seq="L' U' L U" title="Left Trigger (L' U' L U)">L' U' L U</button>
+          <button class="btn-preset-seq" data-seq="F R U R' U' F'" title="Cross / FRUR'U'F'">F R U R' U' F'</button>
+          <button class="btn-preset-seq" data-seq="R U R' U R U2 R'" title="Sune (R U R' U R U2 R')">Sune</button>
+        </div>
+        <div id="sequence-error" class="sequence-error" style="display: none;">Invalid moves (allowed: U, D, F, B, R, L, inverses e.g. U', and 180° turns e.g. U2)</div>
+      </div>
+      
+      <div class="panel controls-group" id="solve-controls">
+        <p>Solver</p>
+        <div class="horizontal-group">
+          <button id="btn-solve-prev">|&lt; Prev</button>
+          <button id="btn-solve-play">Play</button>
+          <button id="btn-solve-next">Next &gt;|</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="dot-drawer" id="dot-drawer">
+    <div class="drawer-header">
+      <div class="drawer-header-row">
+        <h2>🏷️ Facelets (<span id="dot-count">0</span>)</h2>
+        <button id="btn-close-drawer" class="drawer-close-btn" title="Close Menu">&times;</button>
+      </div>
+      <button id="btn-toggle-dot-mode" class="toggle-btn">Facelet Mode: OFF</button>
+    </div>
+    <div class="drawer-content">
+      <div class="dot-naming-presets" style="margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.85;">Full Cube Naming</h3>
+        <div class="horizontal-group" style="display: flex; gap: 6px;">
+          <button id="btn-naming-gap" style="flex: 1; padding: 8px 4px; font-weight: bold; font-size: 0.8rem;" title="Number all 54 facelets 1-54 in GAP standard permutation order">GAP54</button>
+          <button id="btn-naming-singmaster" style="flex: 1; padding: 8px 4px; font-weight: bold; font-size: 0.8rem;" title="Label all facets using David Singmaster's subscript piece notation">Singmaster</button>
+          <button id="btn-naming-both" style="flex: 1; padding: 8px 4px; font-weight: bold; font-size: 0.8rem;" title="Show both Singmaster and GAP54 notation simultaneously on all facelets">Both</button>
+        </div>
+      </div>
+      <div class="dot-list" id="dot-list"></div>
+      <div class="dot-actions">
+        <button id="btn-remove-all" class="btn-remove-all" title="Remove all facelet dots">Remove All</button>
+      </div>
+      <div class="dot-presets">
+        <h3>Saved Configs</h3>
+        <input type="text" id="config-name" placeholder="Config Name">
+        <button id="btn-save-config">Save Configuration</button>
+        <div id="saved-configs-list"></div>
+      </div>
+    </div>
+  </div>
+  <button id="btn-toggle-net" class="net-toggle-btn" title="Toggle 2D Unfolded View">🗺️ 2D Net</button>
+
+  <!-- 2D Unfolded View Panel -->
+  <div id="net-panel" class="panel net-panel open">
+    <div class="net-header">
+      <span class="net-title">🗺️ 2D Unfolded View</span>
+      <button id="btn-close-net" class="drawer-close-btn" title="Close 2D View">&times;</button>
+    </div>
+    <div class="net-container" id="net-container"></div>
+  </div>
+
+  <script src="cube.js?v=20"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js?v=20').then(reg => {
+          reg.update();
+        }).catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

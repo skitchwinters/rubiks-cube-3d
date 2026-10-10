@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.deploy_count
+.vercel/
+.DS_Store
+Thumbs.db
